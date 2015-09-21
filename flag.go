@@ -121,6 +121,10 @@ const (
 	ExitOnError
 	// PanicOnError will panic() if an error is found when parsing flags
 	PanicOnError
+	// IgnoreOnError will ignore the error found from Parse() and continue 
+	// parsing other arguments in argument list instead of returnning immediately after error occured
+	// useful for cases with multiple FlagSets, each has different set of defined flags
+	IgnoreOnError
 )
 
 // NormalizedName is a flag name that has been normalized according to rules
@@ -599,6 +603,7 @@ func VarP(value Value, name, shorthand, usage string) {
 // returns the error.
 func (f *FlagSet) failf(format string, a ...interface{}) error {
 	err := fmt.Errorf(format, a...)
+	if f.errorHandling==IgnoreOnError{ return err }
 	fmt.Fprintln(f.out(), err)
 	f.usage()
 	return err
@@ -756,8 +761,12 @@ func (f *FlagSet) parseArgs(args []string) (err error) {
 		} else {
 			args, err = f.parseShortArg(s, args)
 		}
-		if err != nil {
-			return
+		if err != nil{
+			if f.errorHandling==IgnoreOnError{
+				f.args = append(f.args, s)
+			}else{
+				return
+			}
 		}
 	}
 	return
